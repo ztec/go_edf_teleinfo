@@ -1,39 +1,10 @@
 package go_edf_teleinfo
 
 import (
-	"bytes"
 	"errors"
 	"strconv"
 	"strings"
 )
-
-// Teleinfo (all) data returnable by EDF teleinfo. Remember that I cannot test all cases, meaning some labels are missing. Please contribute to add them
-type Teleinfo struct {
-	OPTARIF string `json:"OPTARIF"` //abonement
-	ISOUSC  int64  `json:"ISOUSC"`  //abonement_puissance
-	HCHC    int64  `json:"HCHC"`    //index_heures_creuses
-	HCHP    int64  `json:"HCHP"`    //index_heures_pleines
-	IINST   int64  `json:"IINST"`   //intensitee_instantanee
-	IMAX    int64  `json:"IMAX"`    //intensitee_max
-	PAPP    int64  `json:"PAPP"`    //puissance_apparente
-	HHPHC   string `json:"HHPHC"`   //groupe_horaire
-	PTEC    string `json:"PTEC"`    //Période Tarifaire en cours
-	RAW     []byte `json:"RAW"`     //Raw edf teleinfo payload
-}
-
-// ScannerSplitter try to identify start and end of EDF teleinfo payload
-func ScannerSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-	//Start + End datagram markers
-	if bytes.Contains(data, []byte{13, 3, 2, 10}) {
-		i := bytes.Index(data, []byte{13, 3, 2, 10})
-		return i + 4, data[0:i], nil
-	}
-	// Request more data.
-	return 0, nil, nil
-}
 
 // PayloadToTeleinfo Convert text from EDF teleinfo to a proper structure
 func PayloadToTeleinfo(edfPayload []byte) (Teleinfo, error) {
@@ -77,7 +48,9 @@ func LineDecoder(rawLine string) (name string, data string, err error) {
 
 	parts := strings.Split(rawLine, " ")
 	if len(parts) < 3 {
-		err = errors.New("Line is not the right format. Ligne shoud look like 'PAPP 00290 ,' (Etiquette / Donnée / Checksum)")
+		err = errors.New(
+			"line is not the right format. Lines should look like 'PAPP 00290 ,' (Etiquette / Donnée / Checksum)",
+		)
 		return
 	}
 
@@ -94,7 +67,7 @@ func LineDecoder(rawLine string) (name string, data string, err error) {
 		name = parts[0]
 		data = parts[1]
 	} else {
-		err = errors.New("Checksum verification failed")
+		err = errors.New("checksum verification failed")
 		return
 	}
 
